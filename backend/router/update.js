@@ -1,0 +1,68 @@
+// router/update.js
+//眠気を記録するためのAPIエンドポイント
+
+const express = require('express');
+const router = express.Router();
+const db = require('../db'); // db.jsをインポート
+
+/**
+ * PUT /api/update_recorded_at
+ * 指定されたIDのレコードのrecorded_atカラムを更新します。
+ * リクエストボディ: { "id": <number>, "recorded_at": "<timestamp_string>" }
+ */
+router.put('/', async (req, res) => {
+    try {
+        // --- 1. リクエストボディからデータの取得 ---
+        // フロントエンドから送られてくるidとrecorded_atを取得
+        const { id, recorded_at } = req.body;
+
+        // --- 2. 入力値のバリデーション (簡易版) ---
+        // id と recorded_at が存在するか確認
+        if (id === undefined || recorded_at === undefined) {
+            return res.status(400).json({
+                message: 'Bad Request: "id" and "recorded_at" are required.'
+            });
+        }
+
+        // --- 3. SQLクエリの準備 ---
+        // UPDATE文を使って、指定されたidのレコードのrecorded_atカラムを更新します。
+        const text = `
+            UPDATE sleep_records
+            SET recorded_at = $1
+            WHERE id = $2
+            RETURNING id; -- 更新されたレコードのidを返す (オプション)
+        `;
+        //RETURNING id は「実際に更新されたIDを返す」→これにより「本当にレコードが存在してたか」も確認できる。
+
+
+
+        // $1 に recorded_at の値、$2 に id の値を代入
+        const values = [recorded_at, id];
+
+        // --- 4. データベース操作の実行 ---
+        const result = await db.query(text, values);
+
+        // 更新された行があるか確認
+        if (result.rowCount === 0) {
+            // 指定されたIDのレコードが見つからなかった場合
+            return res.status(404).json({
+                message: `Record with ID ${id} not found.`
+            });
+        }
+
+        // --- 5. 成功時のレスポンス ---
+        res.status(200).json({
+            message: `Recorded_at for ID ${id} updated successfully.`
+        });
+
+    } catch (err) {
+        // --- 6. エラーハンドリング ---
+        console.error('Error updating recorded_at:', err);
+        res.status(500).json({
+            message: 'Failed to update recorded_at.',
+            error: err.message
+        });
+    }
+});
+
+module.exports = router;
