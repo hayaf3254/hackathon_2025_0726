@@ -1,3 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Mochiy+Pop+P+One&display=swap');
+
+body {
+  font-family: 'Mochiy Pop P One', sans-serif;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -66,3 +72,12 @@
     @apply bg-background text-foreground;
   }
 }
+
+.bg-morning {
+  background: linear-gradient(180deg, #f9d976 0%, #f39f86 100%);
+}
+.bg-afternoon {
+  background: linear-gradient(180deg, #a1c4fd 0%, #c2e9fb 100%);
+}
+.bg-night { background: url('/night.png') no-repeat center center/cover; }
+
