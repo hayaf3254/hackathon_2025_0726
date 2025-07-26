@@ -205,7 +205,6 @@ export default function MainPage() {
         {/* === 右カラム === */}
         <div className="flex flex-col items-center w-full h-full">
           <div className="flex flex-col items-center">
-            {/* 吹き出しとクマを横並びにする */}
             <div className="flex items-center justify-center gap-4">
               {/* 吹き出し */}
               <div className="relative w-80 h-52">

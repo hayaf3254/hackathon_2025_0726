@@ -3,6 +3,8 @@ const cors = require('cors');
 const app = express();
 const PORT = 3000;
 const db = require('./db'); 
+const startRouter = require('./router/start');
+const updateRouter = require('./router/update');
 
 // CORSを正しく適用（"app.use(cors(...))" で設定を反映）
 app.use(cors({
@@ -30,6 +32,9 @@ app.get('/sleep_records', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch sleep records' });
     }
 });
+
+app.use('/router/start', startRouter);
+app.use('/router/update', updateRouter);
 
 // サーバー起動
 app.listen(PORT, () => {
