@@ -232,4 +232,60 @@ router.put('/exercise', async (req, res) => {
     }
 });
 
+
+router.put('/late_night_activity', async (req, res) => {
+    try {
+        // --- 1. リクエストボディからデータの取得 ---
+        // フロントエンドから送られてくるidとlate_night_activityを取得
+        const { id, late_night_activity } = req.body;
+
+        // --- 2. 入力値のバリデーション (簡易版) ---
+        // id と late_night_activity が存在するか確認
+        if (id === undefined || late_night_activity === undefined) {
+            return res.status(400).json({
+                message: 'Bad Request: "id" and "late_night_activity" are required.'
+            });
+        }
+
+        // --- 3. SQLクエリの準備 ---
+        // UPDATE文を使って、指定されたidのレコードのlate_night_activityカラムを更新します。
+        const text = `
+            UPDATE sleep_records
+            SET late_night_activity = $1
+            WHERE id = $2
+            RETURNING id; -- 更新されたレコードのidを返す (オプション)
+        `;
+        //RETURNING id は「実際に更新されたIDを返す」→これにより「本当にレコードが存在してたか」も確認できる。
+
+
+
+        // $1 に late_night_activity の値、$2 に id の値を代入
+        const values = [late_night_activity, id];
+
+        // --- 4. データベース操作の実行 ---
+        const result = await db.query(text, values);
+
+        // 更新された行があるか確認
+        if (result.rowCount === 0) {
+            // 指定されたIDのレコードが見つからなかった場合
+            return res.status(404).json({
+                message: `Record with ID ${id} not found.`
+            });
+        }
+
+        // --- 5. 成功時のレスポンス ---
+        res.status(200).json({
+            message: `late_night_activity for ID ${id} updated successfully.`
+        });
+
+    } catch (err) {
+        // --- 6. エラーハンドリング ---
+        console.error('Error updating late_night_activity:', err);
+        res.status(500).json({
+            message: 'Failed to update late_night_activity.',
+            error: err.message
+        });
+    }
+});
+
 module.exports = router;
