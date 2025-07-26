@@ -10,7 +10,7 @@ const db = require('../db'); // db.jsをインポート
  * 指定されたIDのレコードのrecorded_atカラムを更新します。
  * リクエストボディ: { "id": <number>, "recorded_at": "<timestamp_string>" }
  */
-router.put('/', async (req, res) => {
+router.put('/recorded', async (req, res) => {
     try {
         // --- 1. リクエストボディからデータの取得 ---
         // フロントエンドから送られてくるidとrecorded_atを取得
