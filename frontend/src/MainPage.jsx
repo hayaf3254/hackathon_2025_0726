@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,10 @@ const mockSleepData = {
   "2025/07/21": { bedTime: "22:45" },
 };
 
-export default function App() {
+export default function MainPage() {
+  const location = useLocation(); 
+  const navigate = useNavigate(); 
+  const [recordId, setRecordId] = useState(null);
   const [currentTime, setCurrentTime] = useState("");
   const [bgClass, setBgClass] = useState("");
   const [message, setMessage] = useState("");
@@ -25,6 +29,18 @@ export default function App() {
   const [isLoadingSleep, setIsLoadingSleep] = useState(false);
   const [isSleepMode, setIsSleepMode] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
+
+    useEffect(() => {
+      // スタートページから渡されたIDを受け取る
+      if (location.state?.recordId) {
+        const id = location.state.recordId;
+        setRecordId(id);
+        console.log("メインページで受け取ったID:", id); // IDが取れているか
+      } else {
+        alert("IDがうまく読み込めなかったよ。スタートページに戻ります。");
+        navigate("/");
+      }
+    }, [location, navigate]);
 
   const {
     register,
@@ -94,9 +110,7 @@ export default function App() {
     await simulateApi();
     setMessage(
       `カロリー:${data.calories}kcal, 
-      理由:${
-        data.reason || "なし"
-      } 記録したよ！`
+      理由:${data.reason || "なし"} 記録したよ！`
     );
     reset();
   };
