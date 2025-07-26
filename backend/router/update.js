@@ -69,7 +69,7 @@ router.put('/recorded', async (req, res) => {
 router.put('/sleep', async (req, res) => {
     try {
         // --- 1. リクエストボディからデータの取得 ---
-        // フロントエンドから送られてくるidとrecorded_atを取得
+        // フロントエンドから送られてくるidとsleep_timeを取得
         const { id, sleep_time } = req.body;
 
         // --- 2. 入力値のバリデーション (簡易版) ---
@@ -125,7 +125,7 @@ router.put('/sleep', async (req, res) => {
 router.put('/getUp', async (req, res) => {
     try {
         // --- 1. リクエストボディからデータの取得 ---
-        // フロントエンドから送られてくるidとrecorded_atを取得
+        // フロントエンドから送られてくるidとget_upを取得
         const { id, get_up_time } = req.body;
 
         // --- 2. 入力値のバリデーション (簡易版) ---
@@ -177,5 +177,59 @@ router.put('/getUp', async (req, res) => {
     }
 });
 
+router.put('/exercise', async (req, res) => {
+    try {
+        // --- 1. リクエストボディからデータの取得 ---
+        // フロントエンドから送られてくるidとexercise_amountを取得
+        const { id, exercise_amount } = req.body;
+
+        // --- 2. 入力値のバリデーション (簡易版) ---
+        // id と exercise_amount が存在するか確認
+        if (id === undefined || exercise_amount === undefined) {
+            return res.status(400).json({
+                message: 'Bad Request: "id" and "exercise_amount" are required.'
+            });
+        }
+
+        // --- 3. SQLクエリの準備 ---
+        // UPDATE文を使って、指定されたidのレコードのexercise_amountカラムを更新します。
+        const text = `
+            UPDATE sleep_records
+            SET exercise_amount = $1
+            WHERE id = $2
+            RETURNING id; -- 更新されたレコードのidを返す (オプション)
+        `;
+        //RETURNING id は「実際に更新されたIDを返す」→これにより「本当にレコードが存在してたか」も確認できる。
+
+
+
+        // $1 に exercise_amount の値、$2 に id の値を代入
+        const values = [exercise_amount, id];
+
+        // --- 4. データベース操作の実行 ---
+        const result = await db.query(text, values);
+
+        // 更新された行があるか確認
+        if (result.rowCount === 0) {
+            // 指定されたIDのレコードが見つからなかった場合
+            return res.status(404).json({
+                message: `Record with ID ${id} not found.`
+            });
+        }
+
+        // --- 5. 成功時のレスポンス ---
+        res.status(200).json({
+            message: `exercise_amount for ID ${id} updated successfully.`
+        });
+
+    } catch (err) {
+        // --- 6. エラーハンドリング ---
+        console.error('Error updating exercise_amount:', err);
+        res.status(500).json({
+            message: 'Failed to update exercise_amount.',
+            error: err.message
+        });
+    }
+});
 
 module.exports = router;
