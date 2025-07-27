@@ -11,7 +11,8 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 
-// バックエンドができるまでの、擬似的なデータベース
+const API_BASE_URL = "http://localhost:3000";
+
 const mockSleepData = {
   "2025/07/23": { bedTime: "23:15" },
   "2025/07/22": { bedTime: "22:30" },
@@ -19,28 +20,19 @@ const mockSleepData = {
 };
 
 export default function MainPage() {
-  const location = useLocation(); 
-  const navigate = useNavigate(); 
+  const location = useLocation();
+  const navigate = useNavigate();
   const [recordId, setRecordId] = useState(null);
+
   const [currentTime, setCurrentTime] = useState("");
   const [bgClass, setBgClass] = useState("");
   const [message, setMessage] = useState("");
+  const [isError, setIsError] = useState(false);
   const [isLoadingSleepy, setIsLoadingSleepy] = useState(false);
   const [isLoadingSleep, setIsLoadingSleep] = useState(false);
+  const [isLoadingForm, setIsLoadingForm] = useState(false);
   const [isSleepMode, setIsSleepMode] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
-
-    useEffect(() => {
-      // スタートページから渡されたIDを受け取る
-      if (location.state?.recordId) {
-        const id = location.state.recordId;
-        setRecordId(id);
-        console.log("メインページで受け取ったID:", id); // IDが取れているか
-      } else {
-        alert("IDがうまく読み込めなかったよ。スタートページに戻ります。");
-        navigate("/");
-      }
-    }, [location, navigate]);
 
   const {
     register,
@@ -50,22 +42,24 @@ export default function MainPage() {
   } = useForm();
 
   useEffect(() => {
+    if (location.state?.recordId) {
+      setRecordId(location.state.recordId);
+    } else {
+      alert("記録が開始されていません。スタートページに戻ります。");
+      navigate("/");
+    }
     const now = new Date();
     const hour = now.getHours();
     if (hour >= 4 && hour < 12) {
       setBgClass("bg-morning");
-      setMessage(`おはよう！
-        今日も一日がんばろ！`);
+      setMessage(`おはよう！\n今日も一日がんばろ！`);
     } else if (hour >= 12 && hour < 18) {
       setBgClass("bg-afternoon");
-      setMessage(`午後もファイト！
-        あと少しだよ！`);
+      setMessage(`午後もファイト！\nあと少しだよ！`);
     } else {
       setBgClass("bg-night");
-      setMessage(`おつかれさまでした！
-        今日はよくねれそうかな？`);
+      setMessage(`おつかれさまでした！\n今日はよくねれそうかな？`);
     }
-
     const updateClock = () => {
       setCurrentTime(
         new Date().toLocaleTimeString("ja-JP", {
@@ -77,42 +71,144 @@ export default function MainPage() {
     updateClock();
     const interval = setInterval(updateClock, 1000);
     return () => clearInterval(interval);
-  }, []);
-
-  const simulateApi = () => new Promise((resolve) => setTimeout(resolve, 1500));
+  }, [location, navigate]);
 
   const handleSleepyClick = async () => {
+    if (!recordId) return;
     setIsLoadingSleepy(true);
     setMessage("処理中だよ！");
-    await simulateApi();
-    setIsLoadingSleepy(false);
-    setMessage(`記録したよ。
-      早く寝ちゃおう！`);
+    setIsError(false);
+    try {
+      const response = await fetch(`${API_BASE_URL}/router/update/recorded`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: recordId,
+          recorded_at: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        // ↓↓↓ 目印を追加 ↓↓↓
+        console.log("★★APIエラーを検知！これからエラーを発生させます。");
+        throw new Error("API request failed");
+      }
+
+      setMessage(`記録したよ。\n早く寝ちゃおう！`);
+    } catch (error) {
+      // ↓↓↓ 目印を追加 ↓↓↓
+      console.log(
+        "★★catchブロックが実行されました！エラーメッセージを表示します。"
+      );
+      console.error("「眠たいかも」の記録に失敗:", error);
+      setMessage("エラー：記録に失敗しました。サーバーを確認してください。");
+      setIsError(true);
+    } finally {
+      setIsLoadingSleepy(false);
+    }
   };
 
   const handleSleepClick = async () => {
+    if (!recordId) return;
     setIsLoadingSleep(true);
     setMessage("処理中だよ！");
-    await simulateApi();
-    setIsLoadingSleep(false);
-    setIsSleepMode(!isSleepMode);
-    setMessage(
-      isSleepMode
-        ? `おはよう！記録したよ。
-      今日もがんばってこう！`
-        : `記録したよ。
-      おやすみ！`
-    );
+    setIsError(false);
+
+    const isWakingUp = isSleepMode;
+    const url = isWakingUp
+      ? `${API_BASE_URL}/router/update/getUp`
+      : `${API_BASE_URL}/router/update/sleep`;
+    const body = isWakingUp
+      ? { id: recordId, get_up_time: new Date().toISOString() }
+      : { id: recordId, sleep_time: new Date().toISOString() };
+
+    try {
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) throw new Error("API request failed");
+      setMessage(
+        isWakingUp
+          ? `おはよう！記録したよ。\n今日もがんばってこう！`
+          : `記録したよ。\nおやすみ！`
+      );
+      setIsSleepMode(!isSleepMode);
+    } catch (error) {
+      console.error("就寝/起床の記録に失敗:", error);
+      setMessage(`
+        エラー：
+        記録に失敗しました。
+        サーバーを
+        確認してください。`);
+      setIsError(true);
+    } finally {
+      setIsLoadingSleep(false);
+    }
   };
 
-  const onSubmit = async (data) => {
+  const onSubmit = async (formData) => {
+    if (!formData.calories && !formData.reason) {
+      setMessage("カロリーか理由の\nどちらか一つは入力してね！");
+      setIsError(true);
+      return; // ここで処理を中断
+    }
+
+    if (!recordId) return;
+    setIsLoadingForm(true);
     setMessage("処理中だよ！");
-    await simulateApi();
-    setMessage(
-      `カロリー:${data.calories}kcal, 
-      理由:${data.reason || "なし"} 記録したよ！`
-    );
-    reset();
+    setIsError(false);
+
+    try {
+      const apiCalls = [];
+      if (formData.calories && formData.calories > 0) {
+        const exerciseApiCall = fetch(
+          `${API_BASE_URL}/router/update/exercise`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: recordId,
+              exercise_amount: parseFloat(formData.calories),
+            }),
+          }
+        );
+        apiCalls.push(exerciseApiCall);
+      }
+      if (formData.reason) {
+        const activityApiCall = fetch(
+          `${API_BASE_URL}/router/update/late_night_activity`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: recordId,
+              late_night_activity: formData.reason,
+            }),
+          }
+        );
+        apiCalls.push(activityApiCall);
+      }
+      if (apiCalls.length > 0) {
+        const responses = await Promise.all(apiCalls);
+        for (const response of responses) {
+          if (!response.ok) throw new Error("API request failed");
+        }
+      }
+      setMessage("フォームの内容を記録したよ！");
+      reset();
+    } catch (error) {
+      console.error("フォームの記録に失敗:", error);
+      setMessage(`
+        エラー：
+        記録に失敗しました。
+        サーバーを
+        確認してください。`);
+      setIsError(true);
+    } finally {
+      setIsLoadingForm(false);
+    }
   };
 
   const handleDateSelect = (date) => {
@@ -136,13 +232,12 @@ export default function MainPage() {
               おやすみ宣言
             </h1>
             <p className="text-xl mt-2">今日はきのうより早く寝るサイト</p>
-            <div className="text-7xl  mt-4">{currentTime}</div>
+            <div className="text-7xl mt-4">{currentTime}</div>
           </header>
-
           <div className="flex gap-4">
             <Button
               className="bg-blue-400 hover:bg-blue-500 text-black px-8 py-3 text-lg rounded-lg"
-              disabled={isLoadingSleepy}
+              disabled={isLoadingSleepy || isLoadingForm}
               onClick={handleSleepyClick}
             >
               {isLoadingSleepy ? "処理中..." : "眠たいかも"}
@@ -153,7 +248,7 @@ export default function MainPage() {
                   ? "bg-green-400 hover:bg-green-500"
                   : "bg-pink-400 hover:bg-pink-500"
               } text-black px-8 py-3 text-lg rounded-lg`}
-              disabled={isLoadingSleep}
+              disabled={isLoadingSleep || isLoadingForm}
               onClick={handleSleepClick}
             >
               {isLoadingSleep
@@ -163,7 +258,6 @@ export default function MainPage() {
                 : "もう寝る！"}
             </Button>
           </div>
-
           <form
             onSubmit={handleSubmit(onSubmit)}
             className="bg-gray-800/50 p-6 rounded-2xl w-full text-white shadow-lg"
@@ -182,7 +276,6 @@ export default function MainPage() {
                 {errors.calories.message}
               </p>
             )}
-
             <label className="block text-md mb-2 mt-4">
               なにが眠れなくする？
             </label>
@@ -192,12 +285,12 @@ export default function MainPage() {
               {...register("reason")}
               className="mb-4 bg-gray-900/70 border-gray-600 placeholder:text-gray-400 rounded-lg"
             />
-
             <Button
               type="submit"
               className="bg-orange-400 hover:bg-orange-500 text-black w-full py-3 text-lg rounded-lg"
+              disabled={isLoadingSleepy || isLoadingSleep || isLoadingForm}
             >
-              記録する
+              {isLoadingForm ? "記録中..." : "記録する"}
             </Button>
           </form>
         </div>
@@ -205,28 +298,27 @@ export default function MainPage() {
         {/* === 右カラム === */}
         <div className="flex flex-col items-center w-full h-full">
           <div className="flex flex-col items-center">
-            {/* 吹き出しとクマを横並びにする */}
             <div className="flex items-center justify-center gap-4">
-              {/* 吹き出し */}
               <div className="relative w-80 h-52">
-                {" "}
                 <img
                   src="/speech.png"
                   alt="吹き出し"
                   className="w-full h-full object-contain drop-shadow-lg"
                 />
-                <p className="absolute top-11 left-[135px] -translate-x-1/2 -translate-y-1/2 w-4/5 text-center text-black text-lg  whitespace-pre-wrap">
+                <p
+                  className={`absolute top-11 left-[135px] -translate-x-1/2 -translate-y-1/2 w-4/5 text-center text-lg whitespace-pre-wrap ${
+                    isError ? "text-red-500 font-bold" : "text-black"
+                  }`}
+                >
                   {message}
                 </p>
               </div>
-              {/* クマ */}
-              <img src="/bear.png" alt="くま" className="w-40" />{" "}
+              <img src="/bear.png" alt="くま" className="w-40" />
             </div>
             <Button className="mt-4 bg-yellow-300 hover:bg-yellow-400 text-black rounded-lg px-6">
               アドバイスを聞く
             </Button>
           </div>
-
           <div className="w-full max-w-sm flex flex-col items-center py-6 gap-[115px]">
             <div className="flex items-center gap-2 w-full">
               <Select onValueChange={handleDateSelect}>
@@ -239,7 +331,6 @@ export default function MainPage() {
                   <SelectItem value="2025/07/21">2025/07/21</SelectItem>
                 </SelectContent>
               </Select>
-
               <div className="flex-1 bg-white/90 text-center p-3 rounded-lg h-12 flex items-center justify-center">
                 {selectedRecord !== null ? (
                   <p className="text-black font-semibold">{selectedRecord}</p>
@@ -248,7 +339,6 @@ export default function MainPage() {
                 )}
               </div>
             </div>
-
             <Button className="bg-purple-500 hover:bg-purple-600 text-black w-full py-3 text-lg rounded-lg">
               記録をまとめて見る
             </Button>
