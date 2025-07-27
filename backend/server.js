@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const app = express();
@@ -5,6 +7,9 @@ const PORT = 3000;
 const db = require('./db'); 
 const startRouter = require('./router/start');
 const updateRouter = require('./router/update');
+const adviceRouter = require('./advice');
+app.use('/api/advice', adviceRouter);
+
 const weekRouter = require('./router/week');
 
 // CORSを正しく適用（"app.use(cors(...))" で設定を反映）
@@ -36,6 +41,7 @@ app.get('/sleep_records', async (req, res) => {
 
 app.use('/router/start', startRouter);
 app.use('/router/update', updateRouter);
+app.use('/advice', adviceRouter);
 app.use('/router/week', weekRouter);
 
 // サーバー起動
