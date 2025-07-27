@@ -4,9 +4,20 @@
 const express = require('express');
 const { Pool } = require('pg');
 const bodyParser = require('body-parser');
-const fetch = require('node-fetch'); // npm install node-fetch
+const router = express.Router();
+//const fetch = require('node-fetch'); // npm install node-fetch
+
+async function getAdvice() {
+  const fetch = (await import('node-fetch')).default; // ← ここがポイント
+  const res = await fetch('https://api.adviceslip.com/advice');
+  const data = await res.json();
+  return data.slip.advice;
+}
+
+module.exports = getAdvice;
 
 require('dotenv').config();
+
 
 const app = express();
 app.use(bodyParser.json());
@@ -17,11 +28,11 @@ const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/
 
 // PostgreSQL DB接続設定
 const pool = new Pool({
-    user: 'postgres',
-    host: 'localhost',
-    database: 'sleep_app_db',
-    password: process.env.DB_PASS,
-    port: 5432,
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_DATABASE,
+  password: process.env.DB_PASSWORD,
+  port: process.env.DB_PORT,
 });
 
 // 定型文（クリック前用）
@@ -59,7 +70,7 @@ async function getGeminiAdvice(records) {
     
 
 // アドバイス取得API：クリック前は定型文、クリック後はパーソナライズ
-app.get('/api/advice', async (req, res) => {
+router.post('/', async (req, res) => {
     const userId = req.query.user_id;
     const phase = req.query.phase; // "morning" | "afternoon" | "night"
     const clicked = req.query.clicked === "true"; // trueならアドバイスをAI分析
@@ -91,8 +102,5 @@ app.get('/api/advice', async (req, res) => {
   }
 });
 
-// サーバ起動
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Advice API running on port ${PORT}`);
-});
+
+module.exports = router;
