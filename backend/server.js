@@ -12,6 +12,8 @@ app.use('/api/advice', adviceRouter);
 
 const weekRouter = require('./router/week');
 
+const sleepingRouter = require('./router/sleeping');
+
 // CORSを正しく適用（"app.use(cors(...))" で設定を反映）
 app.use(cors({
   origin: '*', // どこからのアクセスでも許可（開発用）
@@ -43,6 +45,8 @@ app.use('/router/start', startRouter);
 app.use('/router/update', updateRouter);
 app.use('/advice', adviceRouter);
 app.use('/router/week', weekRouter);
+app.use('/router/sleeping', sleepingRouter);
+
 
 // サーバー起動
 app.listen(PORT, () => {
