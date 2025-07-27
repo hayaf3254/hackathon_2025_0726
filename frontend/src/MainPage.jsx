@@ -33,6 +33,7 @@ export default function MainPage() {
   const [isLoadingForm, setIsLoadingForm] = useState(false);
   const [isSleepMode, setIsSleepMode] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [isLoadingAdvice, setIsLoadingAdvice] = useState(false);
 
   const {
     register,
@@ -111,7 +112,9 @@ export default function MainPage() {
     const url = isWakingUp
       ? `${API_BASE_URL}/router/update/getUp`
       : `${API_BASE_URL}/router/update/sleep`;
-    const timeString = new Date().toLocaleTimeString("ja-JP", { hour12: false });
+    const timeString = new Date().toLocaleTimeString("ja-JP", {
+      hour12: false,
+    });
 
     const body = isWakingUp
       ? { id: recordId, get_up_time: timeString }
@@ -215,6 +218,50 @@ export default function MainPage() {
     }
   };
 
+  // 「アドバイスを聞く」ボタン用の新しい関数
+  const handleAdviceClick = async () => {
+    if (!recordId) return;
+    setIsLoadingAdvice(true);
+    setMessage("博士にアドバイスを\n聞いてるよ…");
+    setIsError(false);
+
+    try {
+      const params = new URLSearchParams({
+        user_id: recordId,
+        phase: bgClass.includes("night") ? "night" : "morning",
+        clicked: true,
+      });
+
+      const response = await fetch(
+        `${API_BASE_URL}/advice?${params.toString()}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({}), 
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("API request failed");
+      }
+
+      const data = await response.json();
+      setMessage(data.advice); 
+    } catch (error) {
+      console.error("アドバイスの取得に失敗:", error);
+      setMessage("エラー：アドバイスの取得に失敗しました。");
+      setIsError(true);
+    } finally {
+      setIsLoadingAdvice(false);
+    }
+  };
+
+  const handleViewRecordsClick = () => {
+    navigate("/records");
+  };
+
   return (
     <div
       className={`min-h-screen ${bgClass} text-white flex items-center justify-center p-4 md:p-8`}
@@ -310,8 +357,12 @@ export default function MainPage() {
               </div>
               <img src="/bear.png" alt="くま" className="w-40" />
             </div>
-            <Button className="mt-4 bg-yellow-300 hover:bg-yellow-400 text-black rounded-lg px-6">
-              睡眠博士AIからアドバイスを聞く
+            <Button
+              className="mt-4 bg-yellow-300 hover:bg-yellow-400 text-black rounded-lg px-6"
+              onClick={handleAdviceClick}
+              disabled={isLoadingAdvice}
+            >
+              {isLoadingAdvice ? "考え中..." : "睡眠博士AIからアドバイスを聞く"}
             </Button>
           </div>
           <div className="w-full max-w-sm flex flex-col items-center py-6 gap-[115px]">
@@ -334,7 +385,10 @@ export default function MainPage() {
                 )}
               </div>
             </div>
-            <Button className="bg-purple-500 hover:bg-purple-600 text-black w-full py-3 text-lg rounded-lg">
+            <Button
+              className="bg-purple-500 hover:bg-purple-600 text-black w-full py-3 text-lg rounded-lg"
+              onClick={handleViewRecordsClick}
+            >
               記録をまとめて見る
             </Button>
           </div>
