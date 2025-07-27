@@ -89,18 +89,11 @@ export default function MainPage() {
       });
 
       if (!response.ok) {
-        // ↓↓↓ 目印を追加 ↓↓↓
-        console.log("★★APIエラーを検知！これからエラーを発生させます。");
         throw new Error("API request failed");
       }
 
       setMessage(`記録したよ。\n早く寝ちゃおう！`);
     } catch (error) {
-      // ↓↓↓ 目印を追加 ↓↓↓
-      console.log(
-        "★★catchブロックが実行されました！エラーメッセージを表示します。"
-      );
-      console.error("「眠たいかも」の記録に失敗:", error);
       setMessage("エラー：記録に失敗しました。サーバーを確認してください。");
       setIsError(true);
     } finally {
@@ -118,9 +111,11 @@ export default function MainPage() {
     const url = isWakingUp
       ? `${API_BASE_URL}/router/update/getUp`
       : `${API_BASE_URL}/router/update/sleep`;
+    const timeString = new Date().toLocaleTimeString("ja-JP", { hour12: false });
+
     const body = isWakingUp
-      ? { id: recordId, get_up_time: new Date().toISOString() }
-      : { id: recordId, sleep_time: new Date().toISOString() };
+      ? { id: recordId, get_up_time: timeString }
+      : { id: recordId, sleep_time: timeString };
 
     try {
       const response = await fetch(url, {
@@ -316,7 +311,7 @@ export default function MainPage() {
               <img src="/bear.png" alt="くま" className="w-40" />
             </div>
             <Button className="mt-4 bg-yellow-300 hover:bg-yellow-400 text-black rounded-lg px-6">
-              アドバイスを聞く
+              睡眠博士AIからアドバイスを聞く
             </Button>
           </div>
           <div className="w-full max-w-sm flex flex-col items-center py-6 gap-[115px]">
